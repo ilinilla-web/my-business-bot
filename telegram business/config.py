@@ -20,7 +20,19 @@ if not BOT_TOKEN:
 BUSINESS_NAME = os.getenv("BUSINESS_NAME", "Telegram bots for business · Wrocław")
 
 # Your Telegram username for "Contact me" (without @).
-CONTACT_USERNAME = (os.getenv("CONTACT_USERNAME", "your_username") or "your_username").lstrip("@")
+CONTACT_USERNAME = (os.getenv("CONTACT_USERNAME", "ilinilla") or "ilinilla").lstrip("@")
+
+# Phone shown in Telegram / WhatsApp contact block.
+CONTACT_PHONE = (os.getenv("CONTACT_PHONE", "+48510373906") or "+48510373906").strip()
+
+# Digits only for wa.me links (defaults from CONTACT_PHONE).
+_phone_digits = "".join(c for c in CONTACT_PHONE if c.isdigit())
+CONTACT_WHATSAPP = (
+    os.getenv("CONTACT_WHATSAPP", "").strip()
+    or _phone_digits
+    or "48510373906"
+)
+CONTACT_WHATSAPP_URL = f"https://wa.me/{CONTACT_WHATSAPP}"
 
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "").strip() or None
 LEADS_FILE = os.getenv("LEADS_FILE", os.path.join("data", "leads.csv"))

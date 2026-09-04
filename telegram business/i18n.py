@@ -5,7 +5,12 @@ import json
 import os
 from typing import Any
 
-from config import BUSINESS_NAME, CONTACT_USERNAME
+from config import (
+    BUSINESS_NAME,
+    CONTACT_PHONE,
+    CONTACT_USERNAME,
+    CONTACT_WHATSAPP_URL,
+)
 
 LANG_FILE = os.path.join("data", "languages.json")
 SUPPORTED = ("en", "pl", "ru", "uk")
@@ -49,6 +54,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "contact_me": (
             "*Contact me*\n\n"
             "Telegram: @{username}\n"
+            "Phone / Telegram: {phone}\n"
+            "WhatsApp: {whatsapp_url}\n"
             "Location: Wrocław, Poland\n\n"
             "Or tap *Order a bot* and leave your niche + task — I'll reply."
         ),
@@ -116,6 +123,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "contact_me": (
             "*Kontakt*\n\n"
             "Telegram: @{username}\n"
+            "Telefon / Telegram: {phone}\n"
+            "WhatsApp: {whatsapp_url}\n"
             "Lokalizacja: Wrocław\n\n"
             "Albo kliknij *Zamów bota* i zostaw niszę + zadanie."
         ),
@@ -183,6 +192,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "contact_me": (
             "*Связаться со мной*\n\n"
             "Telegram: @{username}\n"
+            "Телефон / Telegram: {phone}\n"
+            "WhatsApp: {whatsapp_url}\n"
             "Город: Вроцлав, Польша\n\n"
             "Или нажми *Заказать бота* и оставь нишу + задачу."
         ),
@@ -250,6 +261,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "contact_me": (
             "*Зв’язатися зі мною*\n\n"
             "Telegram: @{username}\n"
+            "Телефон / Telegram: {phone}\n"
+            "WhatsApp: {whatsapp_url}\n"
             "Місто: Вроцлав, Польща\n\n"
             "Або натисни *Замовити бота* і залиш нішу + задачу."
         ),
@@ -330,4 +343,6 @@ def t(lang: str, key: str, **kwargs: Any) -> str:
     template = TEXTS[lang].get(key) or TEXTS[DEFAULT_LANG][key]
     kwargs.setdefault("business_name", BUSINESS_NAME)
     kwargs.setdefault("username", CONTACT_USERNAME)
+    kwargs.setdefault("phone", CONTACT_PHONE)
+    kwargs.setdefault("whatsapp_url", CONTACT_WHATSAPP_URL)
     return template.format(**kwargs)
