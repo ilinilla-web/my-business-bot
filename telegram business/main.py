@@ -1,4 +1,4 @@
-"""Entry point for the lead-generation Telegram bot.
+"""Entry point for the developer portfolio Telegram bot.
 
 Local (polling):
     python main.py
@@ -42,14 +42,14 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Webhook registered: %s", url)
     await setup_bot_commands(bot)
-    logger.info("Bot commands registered: /start /new /help /cancel")
+    logger.info("Bot commands registered: /start /help /cancel")
     yield
     await bot.delete_webhook(drop_pending_updates=False)
     await bot.session.close()
     logger.info("Bot session closed.")
 
 
-app = FastAPI(title="Lead Generation Telegram Bot", lifespan=lifespan)
+app = FastAPI(title="Telegram Bot Portfolio · Wrocław", lifespan=lifespan)
 
 
 @app.get("/")

@@ -1,128 +1,84 @@
-"""Small command section: /start, /new, /help + bottom reply buttons."""
+"""/start, /help and language selection."""
 from aiogram import Bot, F, Router
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BotCommand, Message
+from aiogram.types import BotCommand, CallbackQuery, Message
 
-from i18n import CHOOSE_LANGUAGE, get_lang, has_lang, t
-from keyboards import (
-    category_keyboard,
-    language_keyboard,
-    nav_keyboard,
-    welcome_funnel_keyboard,
-)
+from i18n import CHOOSE_LANGUAGE, get_lang, has_lang, set_lang, t
+from keyboards import CB, language_keyboard, main_menu_keyboard
 
 router = Router()
 
+_LANG_BY_CB = {
+    CB.LANG_EN: "en",
+    CB.LANG_PL: "pl",
+    CB.LANG_RU: "ru",
+    CB.LANG_UK: "uk",
+}
 
-def home_text(lang: str) -> str:
-    return f"{t(lang, 'menu_welcome')}\n\n{t(lang, 'commands_hint')}"
 
-
-async def send_home(message: Message, state: FSMContext) -> None:
-    """Welcome + category buttons right away (conversion screen)."""
-    from handlers.funnel import Funnel
-
-    await state.clear()
-    user_id = message.from_user.id if message.from_user else None
-
-    if not has_lang(user_id):
-        await state.update_data(after_lang="home")
-        await message.answer(CHOOSE_LANGUAGE, reply_markup=language_keyboard())
-        return
-
-    lang = get_lang(user_id)
-    await state.set_state(Funnel.category)
+async def send_main_menu(message: Message, lang: str) -> None:
     await message.answer(
-        home_text(lang),
+        t(lang, "welcome"),
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=nav_keyboard(lang),
-    )
-    await message.answer(
-        t(lang, "funnel_ask_category"),
-        reply_markup=welcome_funnel_keyboard(lang),
-    )
-
-
-async def start_new_request_flow(message: Message, state: FSMContext) -> None:
-    from handlers.funnel import Funnel
-
-    user_id = message.from_user.id if message.from_user else None
-    await state.clear()
-
-    if not has_lang(user_id):
-        await state.update_data(after_lang="category")
-        await message.answer(CHOOSE_LANGUAGE, reply_markup=language_keyboard())
-        return
-
-    lang = get_lang(user_id)
-    await state.set_state(Funnel.category)
-    await message.answer(
-        t(lang, "funnel_ask_category"),
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=category_keyboard(lang),
+        reply_markup=main_menu_keyboard(lang),
     )
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
-    await send_home(message, state)
-
-
-@router.message(Command("new"))
-async def cmd_new(message: Message, state: FSMContext) -> None:
-    await start_new_request_flow(message, state)
+    await state.clear()
+    user_id = message.from_user.id if message.from_user else None
+    if not has_lang(user_id):
+        await message.answer(CHOOSE_LANGUAGE, reply_markup=language_keyboard())
+        return
+    await send_main_menu(message, get_lang(user_id))
 
 
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     lang = get_lang(message.from_user.id if message.from_user else None)
-    await message.answer(
-        f"{t(lang, 'help')}\n\n{t(lang, 'commands_hint')}",
-        reply_markup=nav_keyboard(lang),
+    await message.answer(t(lang, "help"))
+
+
+@router.callback_query(F.data.in_(set(_LANG_BY_CB)))
+async def choose_language(callback: CallbackQuery, state: FSMContext) -> None:
+    lang = _LANG_BY_CB[callback.data]
+    if callback.from_user:
+        set_lang(callback.from_user.id, lang)
+    await callback.answer()
+    await state.clear()
+    await callback.message.edit_text(
+        t(lang, "welcome"),
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=main_menu_keyboard(lang),
     )
 
 
-@router.message(F.text.in_({t("en", "btn_nav_menu"), t("pl", "btn_nav_menu")}))
-async def btn_menu(message: Message, state: FSMContext) -> None:
-    await send_home(message, state)
+@router.callback_query(F.data == CB.CHANGE_LANG)
+async def change_language(callback: CallbackQuery) -> None:
+    await callback.answer()
+    await callback.message.edit_text(CHOOSE_LANGUAGE, reply_markup=language_keyboard())
 
 
-@router.message(F.text.in_({t("en", "btn_nav_new"), t("pl", "btn_nav_new")}))
-async def btn_new(message: Message, state: FSMContext) -> None:
-    await start_new_request_flow(message, state)
-
-
-@router.message(F.text.in_({t("en", "btn_nav_help"), t("pl", "btn_nav_help")}))
-async def btn_help(message: Message) -> None:
-    await cmd_help(message)
+@router.callback_query(F.data == CB.MAIN_MENU)
+async def show_main_menu(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    lang = get_lang(callback.from_user.id if callback.from_user else None)
+    await callback.message.edit_text(
+        t(lang, "welcome"),
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=main_menu_keyboard(lang),
+    )
 
 
 async def setup_bot_commands(bot: Bot) -> None:
     await bot.set_my_commands(
         [
-            BotCommand(command="start", description="Open the menu"),
-            BotCommand(command="new", description="New request"),
-            BotCommand(command="help", description="How it works"),
-            BotCommand(command="cancel", description="Stop"),
-        ],
-        language_code="en",
-    )
-    await bot.set_my_commands(
-        [
-            BotCommand(command="start", description="Otwórz menu"),
-            BotCommand(command="new", description="Nowe zgłoszenie"),
-            BotCommand(command="help", description="Jak to działa"),
-            BotCommand(command="cancel", description="Przerwij"),
-        ],
-        language_code="pl",
-    )
-    await bot.set_my_commands(
-        [
-            BotCommand(command="start", description="Menu / Start"),
-            BotCommand(command="new", description="New request"),
-            BotCommand(command="help", description="Help"),
-            BotCommand(command="cancel", description="Cancel"),
-        ],
+            BotCommand(command="start", description="Open menu / Меню"),
+            BotCommand(command="help", description="Help / Pomoc"),
+            BotCommand(command="cancel", description="Cancel / Anuluj"),
+        ]
     )

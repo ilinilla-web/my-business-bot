@@ -1,13 +1,4 @@
-"""Lead persistence.
-
-Every captured lead is:
-  1. Appended as a row to a CSV file (easy to open in Excel/Google Sheets).
-  2. Emitted to the application log via the "leads" logger.
-
-This is intentionally simple (no external database) so the project runs
-out-of-the-box. Swap `save_lead` internals for a real database or CRM/webhook
-call in production if needed.
-"""
+"""Lead persistence for project inquiries."""
 import csv
 import logging
 import os
@@ -23,11 +14,9 @@ FIELDNAMES = [
     "user_id",
     "username",
     "full_name",
-    "name",
-    "phone",
-    "category",
+    "niche",
     "task",
-    "photo_file_id",
+    "contact",
 ]
 
 
@@ -37,22 +26,18 @@ class Lead:
     user_id: int
     username: str
     full_name: str
-    name: str
-    phone: str
-    category: str
+    niche: str
     task: str
-    photo_file_id: str
+    contact: str
 
 
 def _ensure_file() -> None:
-    """Create the leads directory/file with a header row if missing."""
     directory = os.path.dirname(LEADS_FILE)
     if directory:
         os.makedirs(directory, exist_ok=True)
     if not os.path.exists(LEADS_FILE):
         with open(LEADS_FILE, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
-            writer.writeheader()
+            csv.DictWriter(f, fieldnames=FIELDNAMES).writeheader()
 
 
 def save_lead(
@@ -60,47 +45,36 @@ def save_lead(
     user_id: int,
     username: str,
     full_name: str,
-    name: str,
-    phone: str,
-    task: str = "",
-    category: str = "",
-    photo_file_id: str = "",
+    niche: str,
+    task: str,
+    contact: str,
 ) -> Lead:
-    """Persist a new lead, print it to the console, and return the record."""
     lead = Lead(
         timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         user_id=user_id,
         username=username or "",
         full_name=full_name or "",
-        name=name,
-        phone=phone,
-        category=category or "",
+        niche=niche or "",
         task=task or "",
-        photo_file_id=photo_file_id or "",
+        contact=contact or "",
     )
-
     _ensure_file()
     with open(LEADS_FILE, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
-        writer.writerow(asdict(lead))
+        csv.DictWriter(f, fieldnames=FIELDNAMES).writerow(asdict(lead))
 
     logger.info(
-        "New lead captured: name=%r phone=%r category=%r task=%r photo=%s user_id=%s username=%r",
-        name,
-        phone,
-        category,
+        "New inquiry: niche=%r task=%r contact=%r user_id=%s @%s",
+        niche,
         task,
-        bool(photo_file_id),
+        contact,
         user_id,
         username,
     )
     print(
-        "NEW LEAD\n"
-        f"  name:     {lead.name}\n"
-        f"  phone:    {lead.phone}\n"
-        f"  category: {lead.category}\n"
+        "NEW INQUIRY\n"
+        f"  niche:    {lead.niche}\n"
         f"  task:     {lead.task}\n"
-        f"  photo:    {lead.photo_file_id or '-'}\n"
+        f"  contact:  {lead.contact}\n"
         f"  username: @{lead.username or 'N/A'}\n"
         f"  user_id:  {lead.user_id}",
         flush=True,
