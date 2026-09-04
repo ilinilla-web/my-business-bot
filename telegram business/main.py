@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 
 from bot import bot, dp
 from config import HOST, PORT, WEBHOOK_PATH, WEBHOOK_SECRET, WEBHOOK_URL
+from handlers.commands import setup_bot_commands
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,8 @@ async def lifespan(app: FastAPI):
             drop_pending_updates=True,
         )
         logger.info("Webhook registered: %s", url)
+    await setup_bot_commands(bot)
+    logger.info("Bot commands registered: /start /new /help /cancel")
     yield
     await bot.delete_webhook(drop_pending_updates=False)
     await bot.session.close()
@@ -73,6 +76,7 @@ async def telegram_webhook(
 async def run_polling() -> None:
     """Local development: long-polling, no public URL required."""
     await bot.delete_webhook(drop_pending_updates=True)
+    await setup_bot_commands(bot)
     logger.info("Bot starting (polling mode)... Press Ctrl+C to stop.")
     await dp.start_polling(bot)
 

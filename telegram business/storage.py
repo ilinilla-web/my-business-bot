@@ -18,7 +18,17 @@ from config import LEADS_FILE
 
 logger = logging.getLogger("leads")
 
-FIELDNAMES = ["timestamp", "user_id", "username", "full_name", "name", "phone"]
+FIELDNAMES = [
+    "timestamp",
+    "user_id",
+    "username",
+    "full_name",
+    "name",
+    "phone",
+    "category",
+    "task",
+    "photo_file_id",
+]
 
 
 @dataclass
@@ -29,6 +39,9 @@ class Lead:
     full_name: str
     name: str
     phone: str
+    category: str
+    task: str
+    photo_file_id: str
 
 
 def _ensure_file() -> None:
@@ -42,8 +55,18 @@ def _ensure_file() -> None:
             writer.writeheader()
 
 
-def save_lead(*, user_id: int, username: str, full_name: str, name: str, phone: str) -> Lead:
-    """Persist a new lead and return the stored record."""
+def save_lead(
+    *,
+    user_id: int,
+    username: str,
+    full_name: str,
+    name: str,
+    phone: str,
+    task: str = "",
+    category: str = "",
+    photo_file_id: str = "",
+) -> Lead:
+    """Persist a new lead, print it to the console, and return the record."""
     lead = Lead(
         timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         user_id=user_id,
@@ -51,6 +74,9 @@ def save_lead(*, user_id: int, username: str, full_name: str, name: str, phone: 
         full_name=full_name or "",
         name=name,
         phone=phone,
+        category=category or "",
+        task=task or "",
+        photo_file_id=photo_file_id or "",
     )
 
     _ensure_file()
@@ -59,10 +85,24 @@ def save_lead(*, user_id: int, username: str, full_name: str, name: str, phone: 
         writer.writerow(asdict(lead))
 
     logger.info(
-        "New lead captured: name=%r phone=%r user_id=%s username=%r",
+        "New lead captured: name=%r phone=%r category=%r task=%r photo=%s user_id=%s username=%r",
         name,
         phone,
+        category,
+        task,
+        bool(photo_file_id),
         user_id,
         username,
+    )
+    print(
+        "NEW LEAD\n"
+        f"  name:     {lead.name}\n"
+        f"  phone:    {lead.phone}\n"
+        f"  category: {lead.category}\n"
+        f"  task:     {lead.task}\n"
+        f"  photo:    {lead.photo_file_id or '-'}\n"
+        f"  username: @{lead.username or 'N/A'}\n"
+        f"  user_id:  {lead.user_id}",
+        flush=True,
     )
     return lead

@@ -19,7 +19,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
-from config import ADMIN_CHAT_ID, BUSINESS_NAME
+from config import ADMIN_CHAT_ID
+from i18n import get_lang, t
 from keyboards import CB, back_to_menu_keyboard
 from storage import save_lead
 
@@ -35,16 +36,18 @@ class Booking(StatesGroup):
     phone = State()
 
 
+def _lang(event: Message | CallbackQuery) -> str:
+    return get_lang(event.from_user.id if event.from_user else None)
+
+
 @router.callback_query(F.data == CB.BOOK)
 async def start_booking(callback: CallbackQuery, state: FSMContext) -> None:
     """Entry point: user tapped 'Book Appointment'."""
     await callback.answer()
+    lang = _lang(callback)
     await state.set_state(Booking.name)
     await callback.message.edit_text(
-        "📅 *Book an Appointment*\n\n"
-        "Let's get a few details so our team can reach out to confirm a time.\n\n"
-        "First, what's your *full name*?\n\n"
-        "_(Send /cancel at any time to stop.)_",
+        t(lang, "booking_intro"),
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -52,19 +55,17 @@ async def start_booking(callback: CallbackQuery, state: FSMContext) -> None:
 @router.message(Booking.name, F.text, ~F.text.startswith("/"))
 async def receive_name(message: Message, state: FSMContext) -> None:
     """Store the provided name and ask for a phone number."""
+    lang = _lang(message)
     name = (message.text or "").strip()
 
     if len(name) < 2:
-        await message.answer(
-            "That doesn't look like a valid name. Please enter your full name:"
-        )
+        await message.answer(t(lang, "booking_bad_name"))
         return
 
     await state.update_data(lead_name=name)
     await state.set_state(Booking.phone)
     await message.answer(
-        f"Thanks, {name}! 📱 Now, what's the best *phone number* to reach you?\n\n"
-        "_(e.g. +1 555 123 4567)_",
+        t(lang, "booking_ask_phone", name=name),
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -72,13 +73,11 @@ async def receive_name(message: Message, state: FSMContext) -> None:
 @router.message(Booking.phone, F.text, ~F.text.startswith("/"))
 async def receive_phone(message: Message, state: FSMContext, bot: Bot) -> None:
     """Validate the phone number, save the lead, and confirm to the user."""
+    lang = _lang(message)
     phone = (message.text or "").strip()
 
     if not PHONE_RE.match(phone):
-        await message.answer(
-            "That doesn't look like a valid phone number. Please try again "
-            "(e.g. +1 555 123 4567):"
-        )
+        await message.answer(t(lang, "booking_bad_phone"))
         return
 
     data = await state.get_data()
@@ -92,14 +91,13 @@ async def receive_phone(message: Message, state: FSMContext, bot: Bot) -> None:
         full_name=user.full_name or "",
         name=name,
         phone=phone,
+        task="appointment booking",
     )
 
     await message.answer(
-        "✅ *You're all set!*\n\n"
-        f"Thanks, {name} — a member of the {BUSINESS_NAME} team will contact you "
-        f"at {phone} shortly to confirm your appointment.",
+        t(lang, "booking_done", name=name, phone=phone),
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=back_to_menu_keyboard(),
+        reply_markup=back_to_menu_keyboard(lang),
     )
 
     if ADMIN_CHAT_ID:
@@ -120,8 +118,9 @@ async def receive_phone(message: Message, state: FSMContext, bot: Bot) -> None:
 @router.message(StateFilter(Booking.name, Booking.phone), Command("cancel"))
 async def cancel_booking(message: Message, state: FSMContext) -> None:
     """Handle /cancel — abort the booking conversation."""
+    lang = _lang(message)
     await state.clear()
     await message.answer(
-        "Booking cancelled. Send /start to open the menu again.",
+        t(lang, "booking_cancel"),
         reply_markup=ReplyKeyboardRemove(),
     )
